@@ -74,6 +74,14 @@
                         commandAPIUrl += '&secret=' + ariaNgCommonService.base64UrlEncode(setting.secret);
                     }
 
+                    if (setting.httpMethod) {
+                        commandAPIUrl += '&method=' + setting.httpMethod;
+                    }
+
+                    if (setting.rpcRequestHeaders) {
+                        commandAPIUrl += '&headers=' + ariaNgCommonService.base64UrlEncode(setting.rpcRequestHeaders);
+                    }
+
                     return commandAPIUrl;
                 };
 

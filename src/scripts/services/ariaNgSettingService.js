@@ -143,6 +143,16 @@
             return ariaNgConstants.defaultHost;
         };
 
+        var getFormattedRpcHost = function (rpcHost) {
+            // IPv6 literals (e.g. ::1, 2001:db8::1) must be wrapped in brackets to be
+            // a valid URL authority. Hostnames and IPv4 addresses never contain a colon.
+            if (rpcHost && rpcHost.indexOf(':') >= 0 && rpcHost.charAt(0) !== '[') {
+                return '[' + rpcHost + ']';
+            }
+
+            return rpcHost;
+        };
+
         var setOptions = function (options) {
             return ariaNgStorageService.set(ariaNgConstants.optionStorageKey, options);
         };
@@ -478,7 +488,7 @@
                     return options.rpcAlias;
                 }
 
-                return options.rpcHost + ':' + options.rpcPort;
+                return getFormattedRpcHost(options.rpcHost) + ':' + options.rpcPort;
             },
             getCurrentRpcUrl: function () {
                 var options = getOptions();
@@ -487,7 +497,7 @@
                 var rpcPort = options.rpcPort;
                 var rpcInterface = options.rpcInterface;
 
-                return protocol + '://' + rpcHost + ':' + rpcPort + '/' + rpcInterface;
+                return protocol + '://' + getFormattedRpcHost(rpcHost) + ':' + rpcPort + '/' + rpcInterface;
             },
             getCurrentRpcHttpMethod: function () {
                 return getOption('httpMethod');

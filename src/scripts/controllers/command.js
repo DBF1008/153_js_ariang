@@ -51,10 +51,11 @@
             return true;
         };
 
-        var doSetRpcCommand = function (rpcProtocol, rpcHost, rpcPort, rpcInterface, secret) {
+        var doSetRpcCommand = function (rpcProtocol, rpcHost, rpcPort, rpcInterface, secret, httpMethod, rpcRequestHeaders) {
             rpcPort = rpcPort || ariaNgDefaultOptions.rpcPort;
             rpcInterface = rpcInterface || ariaNgDefaultOptions.rpcInterface;
             secret = secret || ariaNgDefaultOptions.secret;
+            httpMethod = httpMethod || ariaNgDefaultOptions.httpMethod;
 
             ariaNgLogService.info('[CommandController] set rpc: ' + rpcProtocol + '://' + rpcHost + ':' + rpcPort + '/' + rpcInterface + ', secret: ' + secret);
 
@@ -77,14 +78,25 @@
                 }
             }
 
+            if (rpcRequestHeaders) {
+                try {
+                    rpcRequestHeaders = ariaNgCommonService.base64UrlDecode(rpcRequestHeaders);
+                } catch (ex) {
+                    ariaNgCommonService.showError('RPC request headers are not base64 encoded!');
+                    return false;
+                }
+            } else {
+                rpcRequestHeaders = ariaNgDefaultOptions.rpcRequestHeaders;
+            }
+
             var newSetting = {
                 rpcAlias: '',
                 rpcHost: rpcHost,
                 rpcPort: rpcPort,
                 rpcInterface: rpcInterface,
                 protocol: rpcProtocol,
-                httpMethod: ariaNgDefaultOptions.httpMethod,
-                rpcRequestHeaders: '',
+                httpMethod: httpMethod,
+                rpcRequestHeaders: rpcRequestHeaders,
                 secret: secret
             };
 
@@ -107,7 +119,7 @@
             if (path.indexOf('/new') === 0) {
                 return doNewTaskCommand(params.url, params);
             } else if (path.indexOf('/settings/rpc/set') === 0) {
-                return doSetRpcCommand(params.protocol, params.host, params.port, params.interface, params.secret);
+                return doSetRpcCommand(params.protocol, params.host, params.port, params.interface, params.secret, params.method, params.headers);
             } else {
                 ariaNgCommonService.showError('Parameter is invalid!');
                 return false;

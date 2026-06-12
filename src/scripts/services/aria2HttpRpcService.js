@@ -74,14 +74,20 @@
                     var lines = requestHeaders.split('\n');
 
                     for (var i = 0; i < lines.length; i++) {
-                        var items = lines[i].split(':');
+                        // Split on the first colon only: a header value may itself
+                        // contain colons (e.g. "Authorization: Bearer a:b").
+                        var colonIndex = lines[i].indexOf(':');
 
-                        if (items.length !== 2) {
+                        if (colonIndex < 0) {
                             continue;
                         }
 
-                        var name = items[0].trim();
-                        var value = items[1].trim();
+                        var name = lines[i].substring(0, colonIndex).trim();
+                        var value = lines[i].substring(colonIndex + 1).trim();
+
+                        if (!name) {
+                            continue;
+                        }
 
                         requestContext.headers[name] = value;
                     }
