@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    angular.module('ariaNg').factory('ariaNgLanguageLoader', ['$http', '$q', 'ariaNgConstants', 'ariaNgLanguages', 'ariaNgAssetsCacheService', 'ariaNgNotificationService', 'ariaNgLogService', 'ariaNgStorageService', function ($http, $q, ariaNgConstants, ariaNgLanguages, ariaNgAssetsCacheService, ariaNgNotificationService, ariaNgLogService, ariaNgStorageService) {
+    angular.module('ariaNg').factory('ariaNgLanguageLoader', ['$http', '$q', 'ariaNgConstants', 'ariaNgLanguages', 'ariaNgDefaultLanguageResource', 'ariaNgAssetsCacheService', 'ariaNgNotificationService', 'ariaNgLogService', 'ariaNgStorageService', 'ariaNgLanguageOverrideService', function ($http, $q, ariaNgConstants, ariaNgLanguages, ariaNgDefaultLanguageResource, ariaNgAssetsCacheService, ariaNgNotificationService, ariaNgLogService, ariaNgStorageService, ariaNgLanguageOverrideService) {
         var getKeyValuePair = function (line) {
             for (var i = 0; i < line.length; i++) {
                 if (i > 0 && line.charAt(i - 1) !== '\\' && line.charAt(i) === '=') {
@@ -116,15 +116,27 @@
                 return deferred.promise;
             }
 
+            // English (default language): resolve from constant, apply overrides
+            if (options.key === ariaNgConstants.defaultLanguage) {
+                var englishObject = angular.copy(ariaNgDefaultLanguageResource);
+                ariaNgLanguageOverrideService.mergeIntoLanguage(options.key, englishObject);
+                var englishStorageKey = ariaNgConstants.languageStorageKeyPrefix + '.' + options.key;
+                ariaNgStorageService.set(englishStorageKey, englishObject);
+                deferred.resolve(englishObject);
+                return deferred.promise;
+            }
+
             var languageKey = ariaNgConstants.languageStorageKeyPrefix + '.' + options.key;
             var languageResource = ariaNgStorageService.get(languageKey);
 
             if (languageResource) {
+                ariaNgLanguageOverrideService.mergeIntoLanguage(options.key, languageResource);
                 deferred.resolve(languageResource);
             }
 
             if (ariaNgAssetsCacheService.getLanguageAsset(options.key)) {
                 var languageObject = getLanguageObject(ariaNgAssetsCacheService.getLanguageAsset(options.key));
+                ariaNgLanguageOverrideService.mergeIntoLanguage(options.key, languageObject);
                 ariaNgStorageService.set(languageKey, languageObject);
                 deferred.resolve(languageObject);
 
@@ -138,6 +150,7 @@
                 method: 'GET'
             }).then(function onSuccess(response) {
                 var languageObject = getLanguageObject(response.data);
+                ariaNgLanguageOverrideService.mergeIntoLanguage(options.key, languageObject);
                 var languageUpdated = false;
 
                 if (languageResource) {

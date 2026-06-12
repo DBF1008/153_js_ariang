@@ -84,7 +84,11 @@
             importSettings: null,
             exportSettings: null,
             exportSettingsCopied: false,
-            exportCommandApiOptions: null
+            exportCommandApiOptions: null,
+            languageOverride: ariaNgLocalizationService.getLanguageOverride(),
+            importLanguageOverrideSettings: null,
+            exportLanguageOverrideSettings: null,
+            exportLanguageOverrideCopied: false
         };
 
         $scope.context.titlePreview = getFinalTitle();
@@ -393,6 +397,65 @@
             ariaNgCommonService.confirm('Confirm Clear', 'Are you sure you want to clear all settings history?', 'warning', function () {
                 aria2SettingService.clearSettingsHistorys();
                 $window.location.reload();
+            });
+        };
+
+        // Language Override Management
+        $scope.showImportLanguageOverrideModal = function () {
+            $scope.context.importLanguageOverrideSettings = null;
+            angular.element('#import-language-override-modal').modal();
+        };
+
+        $('#import-language-override-modal').on('hide.bs.modal', function (e) {
+            $scope.context.importLanguageOverrideSettings = null;
+        });
+
+        $scope.openLanguageOverrideFile = function () {
+            ariaNgFileService.openFileContent({
+                scope: $scope,
+                fileFilter: '.json',
+                fileType: 'text'
+            }, function (result) {
+                $scope.context.importLanguageOverrideSettings = result.content;
+            }, function (error) {
+                ariaNgCommonService.showError(error);
+            }, angular.element('#import-language-override-file-holder'));
+        };
+
+        $scope.importLanguageOverride = function (jsonString) {
+            var result = ariaNgLocalizationService.applyLanguageOverride(jsonString);
+
+            if (result.success) {
+                $scope.context.languageOverride = ariaNgLocalizationService.getLanguageOverride();
+                angular.element('#import-language-override-modal').modal('hide');
+                ariaNgCommonService.showOperationSucceeded('Language override has been applied successfully.');
+            } else {
+                ariaNgCommonService.showError(result.error || 'Failed to import language override.');
+            }
+        };
+
+        $scope.showExportLanguageOverrideModal = function () {
+            $scope.context.exportLanguageOverrideSettings = ariaNgLocalizationService.exportLanguageOverride();
+            $scope.context.exportLanguageOverrideCopied = false;
+            angular.element('#export-language-override-modal').modal();
+        };
+
+        $('#export-language-override-modal').on('hide.bs.modal', function (e) {
+            $scope.context.exportLanguageOverrideSettings = null;
+            $scope.context.exportLanguageOverrideCopied = false;
+        });
+
+        $scope.copyExportLanguageOverride = function () {
+            clipboard.copyText($scope.context.exportLanguageOverrideSettings, {
+                container: angular.element('#export-language-override-modal')[0]
+            });
+            $scope.context.exportLanguageOverrideCopied = true;
+        };
+
+        $scope.clearLanguageOverride = function () {
+            ariaNgCommonService.confirm('Confirm Clear', 'Are you sure you want to clear the language override?', 'warning', function () {
+                ariaNgLocalizationService.clearLanguageOverride();
+                $scope.context.languageOverride = null;
             });
         };
 
