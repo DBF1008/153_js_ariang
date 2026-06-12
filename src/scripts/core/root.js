@@ -137,8 +137,35 @@
 
         $rootScope.searchContext = {
             text: '',
+            filter: {
+                field: 'all',
+                status: null
+            },
             setSearchBoxFocused: function () {
                 angular.element('#search-box').focus();
+            },
+            clearSearch: function () {
+                this.text = '';
+                this.filter.field = 'all';
+                this.filter.status = null;
+            },
+            getFilteredCount: function (list) {
+                if (!angular.isArray(list)) {
+                    return 0;
+                }
+
+                var count = 0;
+
+                for (var i = 0; i < list.length; i++) {
+                    if ($rootScope.filterTask(list[i])) {
+                        count++;
+                    }
+                }
+
+                return count;
+            },
+            isFilterActive: function () {
+                return !!(this.text || this.filter.status);
             }
         };
 
@@ -341,11 +368,101 @@
                 return false;
             }
 
+            var filter = $rootScope.searchContext ? $rootScope.searchContext.filter : null;
+
+            // Apply status filter (AND condition)
+            if (filter && filter.status) {
+                if (filter.status === 'error' && task.status !== 'error') {
+                    return false;
+                }
+                if (filter.status === 'complete' && task.status !== 'complete') {
+                    return false;
+                }
+                if (filter.status === 'bt' && !task.bittorrent) {
+                    return false;
+                }
+            }
+
+            // If no search text, all tasks pass (status filter already applied above)
             if (!$rootScope.searchContext || !$rootScope.searchContext.text) {
                 return true;
             }
 
-            return (task.taskName.toLowerCase().indexOf($rootScope.searchContext.text.toLowerCase()) >= 0);
+            var searchText = $rootScope.searchContext.text.toLowerCase();
+            var field = (filter && filter.field) ? filter.field : 'all';
+
+            // Helper to check if a string contains the search text
+            var contains = function (value) {
+                return angular.isString(value) && value.toLowerCase().indexOf(searchText) >= 0;
+            };
+
+            // Search specific field
+            if (field === 'name') {
+                return contains(task.taskName);
+            }
+            if (field === 'gid') {
+                return contains(task.gid);
+            }
+            if (field === 'url') {
+                // Search download URLs
+                if (contains(task.singleUrl)) {
+                    return true;
+                }
+                if (task.files) {
+                    for (var i = 0; i < task.files.length; i++) {
+                        if (task.files[i].uris) {
+                            for (var j = 0; j < task.files[i].uris.length; j++) {
+                                if (contains(task.files[i].uris[j].uri)) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+            if (field === 'hash') {
+                return contains(task.infoHash);
+            }
+            if (field === 'error') {
+                return contains(task.errorDescription);
+            }
+
+            // field === 'all': search across ALL fields with OR logic
+            if (contains(task.taskName)) {
+                return true;
+            }
+            if (contains(task.gid)) {
+                return true;
+            }
+            if (contains(task.infoHash)) {
+                return true;
+            }
+            if (contains(task.singleUrl)) {
+                return true;
+            }
+            if (contains(task.errorDescription)) {
+                return true;
+            }
+
+            // Search file URIs
+            if (task.files) {
+                for (var i = 0; i < task.files.length; i++) {
+                    var file = task.files[i];
+                    if (contains(file.fileName)) {
+                        return true;
+                    }
+                    if (file.uris) {
+                        for (var j = 0; j < file.uris.length; j++) {
+                            if (contains(file.uris[j].uri)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return false;
         };
 
         $rootScope.isTaskRetryable = function (task) {

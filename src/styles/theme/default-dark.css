@@ -394,6 +394,36 @@
     color: #eee;
 }
 
+/* search box & filter bar dark theme */
+.theme-dark.skin-aria-ng .search-box-wrapper .search-clear-btn {
+    color: #888;
+}
+
+.theme-dark.skin-aria-ng .search-box-wrapper .search-clear-btn:hover {
+    color: #dd4b39;
+}
+
+.theme-dark.skin-aria-ng .search-box-wrapper.search-filter-active .form-control {
+    border-color: #5399e8;
+    box-shadow: 0 0 0 1px rgba(83, 153, 232, 0.25);
+}
+
+.theme-dark.skin-aria-ng .search-box-wrapper .search-filter-indicator {
+    color: #5399e8;
+}
+
+.theme-dark.skin-aria-ng .task-filter-bar .filter-count {
+    color: #aaa;
+}
+
+.theme-dark.skin-aria-ng .task-filter-bar .filter-clear {
+    color: #888;
+}
+
+.theme-dark.skin-aria-ng .task-filter-bar .filter-clear:hover {
+    color: #dd4b39;
+}
+
 /* settings-table */
 .theme-dark.skin-aria-ng .settings-table {
     background-color: #1a1a1a;

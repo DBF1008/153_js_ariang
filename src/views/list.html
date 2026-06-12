@@ -37,6 +37,42 @@
                 </div>
             </div>
         </div>
+        <div class="task-filter-bar" ng-if="taskContext.enableSelectAll">
+            <div class="filter-tags">
+                <span class="filter-tag" ng-class="{'filter-tag-active': !searchContext.filter.status}" ng-click="searchContext.filter.status = null" translate>All</span>
+                <span class="filter-tag filter-tag-error" ng-class="{'filter-tag-active': searchContext.filter.status === 'error'}" ng-click="searchContext.filter.status = (searchContext.filter.status === 'error' ? null : 'error')" translate>Error</span>
+                <span class="filter-tag filter-tag-complete" ng-class="{'filter-tag-active': searchContext.filter.status === 'complete'}" ng-click="searchContext.filter.status = (searchContext.filter.status === 'complete' ? null : 'complete')" translate>Completed</span>
+                <span class="filter-tag filter-tag-bt" ng-class="{'filter-tag-active': searchContext.filter.status === 'bt'}" ng-click="searchContext.filter.status = (searchContext.filter.status === 'bt' ? null : 'bt')" translate>BitTorrent</span>
+            </div>
+            <div class="filter-fields">
+                <div class="filter-field-dropdown dropdown">
+                    <a class="filter-field-toggle dropdown-toggle" data-toggle="dropdown" href="javascript:void(0);">
+                        <i class="fa fa-filter"></i>
+                        <span ng-if="searchContext.filter.field === 'all'" translate>All Fields</span>
+                        <span ng-if="searchContext.filter.field === 'name'" translate>Filter by Name</span>
+                        <span ng-if="searchContext.filter.field === 'gid'" translate>Filter by GID</span>
+                        <span ng-if="searchContext.filter.field === 'url'" translate>Filter by URL</span>
+                        <span ng-if="searchContext.filter.field === 'hash'" translate>Filter by Info Hash</span>
+                        <span ng-if="searchContext.filter.field === 'error'" translate>Filter by Error</span>
+                        <i class="fa fa-caret-down"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-right" role="menu">
+                        <li><a class="pointer-cursor" ng-click="searchContext.filter.field = 'all'"><span translate>All Fields</span> <i class="fa fa-fw" ng-class="{'fa-check': searchContext.filter.field === 'all'}"></i></a></li>
+                        <li><a class="pointer-cursor" ng-click="searchContext.filter.field = 'name'"><span translate>Filter by Name</span> <i class="fa fa-fw" ng-class="{'fa-check': searchContext.filter.field === 'name'}"></i></a></li>
+                        <li><a class="pointer-cursor" ng-click="searchContext.filter.field = 'gid'"><span translate>Filter by GID</span> <i class="fa fa-fw" ng-class="{'fa-check': searchContext.filter.field === 'gid'}"></i></a></li>
+                        <li><a class="pointer-cursor" ng-click="searchContext.filter.field = 'url'"><span translate>Filter by URL</span> <i class="fa fa-fw" ng-class="{'fa-check': searchContext.filter.field === 'url'}"></i></a></li>
+                        <li><a class="pointer-cursor" ng-click="searchContext.filter.field = 'hash'"><span translate>Filter by Info Hash</span> <i class="fa fa-fw" ng-class="{'fa-check': searchContext.filter.field === 'hash'}"></i></a></li>
+                        <li><a class="pointer-cursor" ng-click="searchContext.filter.field = 'error'"><span translate>Filter by Error</span> <i class="fa fa-fw" ng-class="{'fa-check': searchContext.filter.field === 'error'}"></i></a></li>
+                    </ul>
+                </div>
+                <span class="filter-count" ng-if="searchContext.isFilterActive()">
+                    <span ng-bind="searchContext.getFilteredCount(taskContext.list)"></span> <span translate>Tasks</span>
+                </span>
+                <a class="filter-clear" ng-if="searchContext.isFilterActive()" ng-click="searchContext.clearSearch()" title="{{'Clear Search' | translate}}">
+                    <i class="fa fa-times-circle"></i>
+                </a>
+            </div>
+        </div>
         <div class="task-table-body" ng-class="{'draggable': isSupportDragTask()}" dragula="'task-list'" dragula-model="taskContext.list">
             <div class="row pointer-cursor" ng-repeat="task in taskContext.list | filter: filterTask | taskOrderBy: getOrderType()"
                  data-gid="{{task.gid}}" data-selected="{{!!taskContext.selected[task.gid]}}" data-toggle="context" data-target="#task-table-contextmenu"

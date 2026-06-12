@@ -92,6 +92,40 @@ td {
     float: right;
 }
 
+/* search box enhancements */
+.search-box-wrapper {
+    position: relative;
+}
+
+.search-box-wrapper.search-filter-active .form-control {
+    border-color: #3c8dbc;
+    box-shadow: 0 0 0 1px rgba(60, 141, 188, 0.25);
+}
+
+.search-box-wrapper .search-clear-btn {
+    cursor: pointer;
+    color: #aaa;
+    pointer-events: auto;
+}
+
+.search-box-wrapper .search-clear-btn:hover {
+    color: #dd4b39;
+}
+
+.search-box-wrapper .search-filter-indicator {
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #3c8dbc;
+    font-size: 11px;
+    pointer-events: none;
+}
+
+.search-box-wrapper.search-filter-active .form-control {
+    padding-left: 22px;
+}
+
 .main-header .logo .logo-mini {
     font-size: 14px !important;
 }
