@@ -42,7 +42,7 @@
                                 continue;
                             }
 
-                            commandAPIUrl += '&' + key + '=' + task.options[key];
+                            commandAPIUrl += '&' + key + '=' + encodeURIComponent(task.options[key]);
                         }
                     }
 
@@ -65,10 +65,10 @@
 
                 var getSettingCommandAPIUrl = function (setting) {
                     var commandAPIUrl = getBaseUrl() + '#!/settings/rpc/set?' +
-                        'protocol=' + setting.protocol +
-                        '&host=' + setting.rpcHost +
-                        '&port=' + setting.rpcPort +
-                        '&interface=' + setting.rpcInterface;
+                        'protocol=' + encodeURIComponent(setting.protocol) +
+                        '&host=' + encodeURIComponent(setting.rpcHost) +
+                        '&port=' + encodeURIComponent(setting.rpcPort) +
+                        '&interface=' + encodeURIComponent(setting.rpcInterface);
 
                     if (setting.secret) {
                         commandAPIUrl += '&secret=' + ariaNgCommonService.base64UrlEncode(setting.secret);
