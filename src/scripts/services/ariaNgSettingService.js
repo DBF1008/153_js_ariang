@@ -478,7 +478,13 @@
                     return options.rpcAlias;
                 }
 
-                return options.rpcHost + ':' + options.rpcPort;
+                var rpcHost = options.rpcHost;
+
+                if (rpcHost && rpcHost.indexOf(':') >= 0) {
+                    rpcHost = '[' + rpcHost + ']';
+                }
+
+                return rpcHost + ':' + options.rpcPort;
             },
             getCurrentRpcUrl: function () {
                 var options = getOptions();
@@ -486,6 +492,10 @@
                 var rpcHost = options.rpcHost;
                 var rpcPort = options.rpcPort;
                 var rpcInterface = options.rpcInterface;
+
+                if (rpcHost && rpcHost.indexOf(':') >= 0) {
+                    rpcHost = '[' + rpcHost + ']';
+                }
 
                 return protocol + '://' + rpcHost + ':' + rpcPort + '/' + rpcInterface;
             },
