@@ -82,6 +82,13 @@
             isSupportBlob: ariaNgFileService.isSupportBlob(),
             isSupportDarkMode: ariaNgSettingService.isBrowserSupportDarkMode(),
             importSettings: null,
+            importPreview: null,
+            importParsedSettings: null,
+            importOptions: {
+                importGlobalSettings: true,
+                importRpcSettings: true,
+                rpcImportMode: 'merge'
+            },
             exportSettings: null,
             exportSettingsCopied: false,
             exportCommandApiOptions: null
@@ -263,13 +270,45 @@
             ariaNgSettingService.setAfterRetryingTask(value);
         };
 
+        var clearImportPreview = function () {
+            $scope.context.importPreview = null;
+            $scope.context.importParsedSettings = null;
+        };
+
+        var parseImportSettings = function (settings) {
+            var settingsObj = null;
+
+            try {
+                settingsObj = JSON.parse(settings);
+            } catch (e) {
+                ariaNgLogService.error('[AriaNgSettingsController.parseImportSettings] parse settings json error', e);
+                ariaNgCommonService.showError('Invalid settings data format!');
+                return null;
+            }
+
+            if (!angular.isObject(settingsObj) || angular.isArray(settingsObj)) {
+                ariaNgLogService.error('[AriaNgSettingsController.parseImportSettings] settings json is not object');
+                ariaNgCommonService.showError('Invalid settings data format!');
+                return null;
+            }
+
+            return settingsObj;
+        };
+
         $scope.showImportSettingsModal = function () {
             $scope.context.importSettings = null;
+            $scope.context.importOptions = {
+                importGlobalSettings: true,
+                importRpcSettings: true,
+                rpcImportMode: 'merge'
+            };
+            clearImportPreview();
             angular.element('#import-settings-modal').modal();
         };
 
         $('#import-settings-modal').on('hide.bs.modal', function (e) {
             $scope.context.importSettings = null;
+            clearImportPreview();
         });
 
         $scope.openAriaNgConfigFile = function () {
@@ -279,34 +318,57 @@
                 fileType: 'text'
             }, function (result) {
                 $scope.context.importSettings = result.content;
+                clearImportPreview();
             }, function (error) {
                 ariaNgCommonService.showError(error);
             }, angular.element('#import-file-holder'));
         };
 
-        $scope.importSettings = function (settings) {
-            var settingsObj = null;
+        $scope.onImportSettingsChanged = function () {
+            clearImportPreview();
+        };
 
-            try {
-                settingsObj = JSON.parse(settings);
-            } catch (e) {
-                ariaNgLogService.error('[AriaNgSettingsController.importSettings] parse settings json error', e);
-                ariaNgCommonService.showError('Invalid settings data format!');
+        $scope.analyzeImportSettings = function (settings) {
+            var settingsObj = parseImportSettings(settings);
+
+            if (!settingsObj) {
+                clearImportPreview();
                 return;
             }
 
-            if (!angular.isObject(settingsObj) || angular.isArray(settingsObj)) {
-                ariaNgLogService.error('[AriaNgSettingsController.importSettings] settings json is not object');
-                ariaNgCommonService.showError('Invalid settings data format!');
+            var preview = ariaNgSettingService.checkImportOptions(settingsObj);
+
+            $scope.context.importParsedSettings = settingsObj;
+            $scope.context.importPreview = preview;
+            $scope.context.importOptions = {
+                importGlobalSettings: preview.global.available,
+                importRpcSettings: preview.rpc.connections.length > 0,
+                rpcImportMode: 'merge'
+            };
+        };
+
+        $scope.canImportSettings = function () {
+            var ctx = $scope.context;
+
+            if (!ctx.importPreview) {
+                return false;
+            }
+
+            return !!(ctx.importOptions.importGlobalSettings || ctx.importOptions.importRpcSettings);
+        };
+
+        $scope.importSettings = function () {
+            if (!$scope.canImportSettings()) {
                 return;
             }
 
-            if (settingsObj) {
-                ariaNgCommonService.confirm('Confirm Import', 'Are you sure you want to import all settings?', 'warning', function () {
-                    ariaNgSettingService.importAllOptions(settingsObj);
-                    $window.location.reload();
-                });
-            }
+            var settingsObj = $scope.context.importParsedSettings;
+            var selectedOptions = angular.copy($scope.context.importOptions);
+
+            ariaNgCommonService.confirm('Confirm Import', 'Are you sure you want to import the selected settings?', 'warning', function () {
+                ariaNgSettingService.importOptions(settingsObj, selectedOptions);
+                $window.location.reload();
+            });
         };
 
         $scope.showExportSettingsModal = function () {

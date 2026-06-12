@@ -231,6 +231,97 @@
             return setting;
         };
 
+        var rpcSettingFields = ['rpcAlias', 'rpcHost', 'rpcPort', 'rpcInterface', 'protocol', 'httpMethod', 'rpcRequestHeaders', 'secret'];
+
+        var isRpcSettingField = function (key) {
+            return rpcSettingFields.indexOf(key) >= 0;
+        };
+
+        var getRpcSettingIdentity = function (setting) {
+            var protocol = (setting.protocol ? ('' + setting.protocol) : '').toLowerCase();
+            var rpcHost = (setting.rpcHost ? ('' + setting.rpcHost) : '').toLowerCase();
+            var rpcPort = (angular.isUndefined(setting.rpcPort) || setting.rpcPort === null ? '' : ('' + setting.rpcPort));
+            var rpcInterface = (setting.rpcInterface ? ('' + setting.rpcInterface) : '');
+
+            return protocol + '://' + rpcHost + ':' + rpcPort + '/' + rpcInterface;
+        };
+
+        var getRpcSettingName = function (setting) {
+            if (setting.rpcAlias) {
+                return setting.rpcAlias;
+            }
+
+            var rpcHost = (setting.rpcHost ? setting.rpcHost : '');
+            var rpcPort = (angular.isUndefined(setting.rpcPort) || setting.rpcPort === null ? '' : setting.rpcPort);
+
+            return rpcHost + ':' + rpcPort;
+        };
+
+        var buildRpcServerFromSource = function (source) {
+            var finalRpcSetting = createNewRpcSetting();
+
+            for (var i = 0; i < rpcSettingFields.length; i++) {
+                var field = rpcSettingFields[i];
+
+                if (!source.hasOwnProperty(field)) {
+                    continue;
+                }
+
+                if (angular.isObject(source[field]) || angular.isArray(source[field])) {
+                    continue;
+                }
+
+                finalRpcSetting[field] = source[field];
+            }
+
+            return finalRpcSetting;
+        };
+
+        // Collects every connection contained in an options object (the inlined default RPC plus extendRpcServers),
+        // dropping entries that have no real endpoint host. Used by both the import pre-check and selective import.
+        var getImportableRpcConnections = function (options) {
+            var connections = [];
+
+            var defaultConnection = cloneRpcSetting(options);
+            defaultConnection.isDefaultInImport = true;
+            connections.push(defaultConnection);
+
+            if (angular.isArray(options.extendRpcServers)) {
+                for (var i = 0; i < options.extendRpcServers.length; i++) {
+                    var extendConnection = cloneRpcSetting(options.extendRpcServers[i]);
+                    extendConnection.isDefaultInImport = false;
+                    connections.push(extendConnection);
+                }
+            }
+
+            var result = [];
+
+            for (var j = 0; j < connections.length; j++) {
+                if (!connections[j].rpcHost) {
+                    continue;
+                }
+
+                result.push(connections[j]);
+            }
+
+            return result;
+        };
+
+        var getCurrentRpcIdentitySet = function () {
+            var options = getOptions();
+            var identitySet = {};
+
+            identitySet[getRpcSettingIdentity(options)] = true;
+
+            if (angular.isArray(options.extendRpcServers)) {
+                for (var i = 0; i < options.extendRpcServers.length; i++) {
+                    identitySet[getRpcSettingIdentity(options.extendRpcServers[i])] = true;
+                }
+            }
+
+            return identitySet;
+        };
+
         return {
             isBrowserSupportStorage: function () {
                 return browserSupportStorage;
@@ -289,11 +380,19 @@
 
                 return result;
             },
-            importAllOptions: function (options) {
-                var finalOptions = angular.copy(ariaNgDefaultOptions);
+            checkImportOptions: function (options) {
+                var currentOptions = getOptions();
+                var effectiveCurrent = angular.extend({}, ariaNgDefaultOptions, currentOptions);
+
+                var globalTotal = 0;
+                var globalChanged = 0;
 
                 for (var key in options) {
-                    if (!options.hasOwnProperty(key) || !finalOptions.hasOwnProperty(key)) {
+                    if (!options.hasOwnProperty(key) || !ariaNgDefaultOptions.hasOwnProperty(key)) {
+                        continue;
+                    }
+
+                    if (key === 'extendRpcServers' || isRpcSettingField(key)) {
                         continue;
                     }
 
@@ -301,31 +400,147 @@
                         continue;
                     }
 
-                    finalOptions[key] = options[key];
+                    globalTotal++;
+
+                    if (options[key] !== effectiveCurrent[key]) {
+                        globalChanged++;
+                    }
                 }
 
-                if (angular.isArray(options.extendRpcServers)) {
-                    for (var i = 0; i < options.extendRpcServers.length; i++) {
-                        var rpcSetting = options.extendRpcServers[i];
-                        var finalRpcSetting = createNewRpcSetting();
+                var currentIdentitySet = getCurrentRpcIdentitySet();
+                var importConnections = getImportableRpcConnections(options);
+                var connections = [];
+                var newCount = 0;
+                var duplicateCount = 0;
+                var seenInImport = {};
 
-                        for (var key in rpcSetting) {
-                            if (!rpcSetting.hasOwnProperty(key) || !finalRpcSetting.hasOwnProperty(key)) {
-                                continue;
-                            }
+                for (var i = 0; i < importConnections.length; i++) {
+                    var connection = importConnections[i];
+                    var identity = getRpcSettingIdentity(connection);
+                    var isDuplicate = !!currentIdentitySet[identity] || !!seenInImport[identity];
 
-                            if (angular.isObject(rpcSetting[key]) || angular.isArray(rpcSetting[key])) {
-                                continue;
-                            }
+                    seenInImport[identity] = true;
 
-                            finalRpcSetting[key] = rpcSetting[key];
+                    if (isDuplicate) {
+                        duplicateCount++;
+                    } else {
+                        newCount++;
+                    }
+
+                    connections.push({
+                        name: getRpcSettingName(connection),
+                        isDefaultInImport: connection.isDefaultInImport,
+                        isDuplicate: isDuplicate
+                    });
+                }
+
+                var currentCount = 1 + (angular.isArray(currentOptions.extendRpcServers) ? currentOptions.extendRpcServers.length : 0);
+
+                return {
+                    global: {
+                        available: globalTotal > 0,
+                        total: globalTotal,
+                        changed: globalChanged
+                    },
+                    rpc: {
+                        currentDefault: {
+                            name: getRpcSettingName(effectiveCurrent)
+                        },
+                        currentCount: currentCount,
+                        connections: connections,
+                        newCount: newCount,
+                        duplicateCount: duplicateCount
+                    }
+                };
+            },
+            importOptions: function (options, params) {
+                params = angular.extend({
+                    importGlobalSettings: true,
+                    importRpcSettings: true,
+                    rpcImportMode: 'merge',
+                    resetToDefaults: false
+                }, params);
+
+                var finalOptions;
+
+                if (params.resetToDefaults) {
+                    finalOptions = angular.copy(ariaNgDefaultOptions);
+                } else {
+                    finalOptions = angular.extend(angular.copy(ariaNgDefaultOptions), angular.copy(getOptions()));
+                }
+
+                if (!angular.isArray(finalOptions.extendRpcServers)) {
+                    finalOptions.extendRpcServers = [];
+                }
+
+                if (params.importGlobalSettings) {
+                    for (var key in options) {
+                        if (!options.hasOwnProperty(key) || !ariaNgDefaultOptions.hasOwnProperty(key)) {
+                            continue;
                         }
 
-                        finalOptions.extendRpcServers.push(finalRpcSetting);
+                        if (key === 'extendRpcServers' || isRpcSettingField(key)) {
+                            continue;
+                        }
+
+                        if (angular.isObject(options[key]) || angular.isArray(options[key])) {
+                            continue;
+                        }
+
+                        finalOptions[key] = options[key];
+                    }
+                }
+
+                if (params.importRpcSettings) {
+                    if (params.rpcImportMode === 'overwrite') {
+                        for (var i = 0; i < rpcSettingFields.length; i++) {
+                            var field = rpcSettingFields[i];
+
+                            if (!options.hasOwnProperty(field)) {
+                                continue;
+                            }
+
+                            if (angular.isObject(options[field]) || angular.isArray(options[field])) {
+                                continue;
+                            }
+
+                            finalOptions[field] = options[field];
+                        }
+
+                        finalOptions.extendRpcServers = [];
+
+                        if (angular.isArray(options.extendRpcServers)) {
+                            for (var j = 0; j < options.extendRpcServers.length; j++) {
+                                finalOptions.extendRpcServers.push(buildRpcServerFromSource(options.extendRpcServers[j]));
+                            }
+                        }
+                    } else {
+                        var identitySet = getCurrentRpcIdentitySet();
+                        var importConnections = getImportableRpcConnections(options);
+
+                        for (var k = 0; k < importConnections.length; k++) {
+                            var connection = importConnections[k];
+                            var identity = getRpcSettingIdentity(connection);
+
+                            if (identitySet[identity]) {
+                                continue;
+                            }
+
+                            identitySet[identity] = true;
+                            finalOptions.extendRpcServers.push(buildRpcServerFromSource(connection));
+                        }
                     }
                 }
 
                 setOptions(finalOptions);
+            },
+            importAllOptions: function (options) {
+                this.importOptions(options, {
+                    importGlobalSettings: true,
+                    importRpcSettings: true,
+                    rpcImportMode: 'overwrite',
+                    resetToDefaults: true
+                });
             },
             exportAllOptions: function () {
                 var options = angular.extend({}, ariaNgDefaultOptions, getOptions());

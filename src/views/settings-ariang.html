@@ -463,13 +463,64 @@
                 <div class="modal-body no-padding">
                     <div class="settings-table striped">
                         <input id="import-file-holder" type="file" style="display: none"/>
-                        <textarea class="form-control" ng-model="context.importSettings" rows="20"
+                        <textarea class="form-control" ng-model="context.importSettings" rows="10"
+                                  ng-change="onImportSettingsChanged()"
                                   ng-placeholder="'AriaNg settings data' | translate"></textarea>
+                    </div>
+                    <div class="settings-table striped" ng-if="context.importPreview">
+                        <div class="row">
+                            <div class="setting-key setting-key-without-desc col-sm-4">
+                                <span translate>Global Settings</span>
+                            </div>
+                            <div class="setting-value col-sm-8">
+                                <div class="checkbox checkbox-primary" ng-if="context.importPreview.global.available">
+                                    <input id="import-global-settings" type="checkbox" ng-model="context.importOptions.importGlobalSettings"/>
+                                    <label for="import-global-settings" translate>Import global settings</label>
+                                </div>
+                                <small class="text-muted" ng-if="context.importPreview.global.available"
+                                       translate translate-values="{total: context.importPreview.global.total, changed: context.importPreview.global.changed}">{total} setting(s), {changed} changed</small>
+                                <small class="text-muted" ng-if="!context.importPreview.global.available" translate>No global settings found in the imported data.</small>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="setting-key setting-key-without-desc col-sm-4">
+                                <span translate>RPC Settings</span>
+                            </div>
+                            <div class="setting-value col-sm-8">
+                                <div ng-if="context.importPreview.rpc.connections.length > 0">
+                                    <div class="checkbox checkbox-primary">
+                                        <input id="import-rpc-settings" type="checkbox" ng-model="context.importOptions.importRpcSettings"/>
+                                        <label for="import-rpc-settings" translate>Import RPC connections</label>
+                                    </div>
+                                    <select class="form-control" ng-model="context.importOptions.rpcImportMode"
+                                            ng-if="context.importOptions.importRpcSettings" style="margin-bottom: 8px;">
+                                        <option value="merge" translate>Merge (keep current connections and default)</option>
+                                        <option value="overwrite" translate>Replace (overwrite all current settings)</option>
+                                    </select>
+                                    <div ng-if="context.importOptions.importRpcSettings && context.importOptions.rpcImportMode === 'merge'" style="margin-bottom: 6px;">
+                                        <span class="asterisk">*</span>
+                                        <small class="text-muted"><span translate>The current default RPC connection will be kept:</span> <strong ng-bind="context.importPreview.rpc.currentDefault.name"></strong></small>
+                                    </div>
+                                    <ul class="list-unstyled" style="margin-bottom: 0;">
+                                        <li ng-repeat="conn in context.importPreview.rpc.connections" style="padding: 2px 0;">
+                                            <span class="label label-success" ng-if="!conn.isDuplicate" translate>New</span>
+                                            <span class="label label-default" ng-if="conn.isDuplicate" translate>Duplicate</span>
+                                            <span ng-bind="conn.name"></span>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <small class="text-muted" ng-if="context.importPreview.rpc.connections.length < 1" translate>No RPC connections found in the imported data.</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" ng-disabled="!context.importSettings || !context.importSettings.length"
-                            ng-click="importSettings(context.importSettings)" translate>Import</button>
+                    <button type="button" class="btn btn-primary" ng-if="!context.importPreview"
+                            ng-disabled="!context.importSettings || !context.importSettings.length"
+                            ng-click="analyzeImportSettings(context.importSettings)" translate>Preview</button>
+                    <button type="button" class="btn btn-primary" ng-if="context.importPreview"
+                            ng-disabled="!canImportSettings()"
+                            ng-click="importSettings()" translate>Import</button>
                     <button type="button" class="btn btn-default" data-dismiss="modal" translate>Cancel</button>
                 </div>
             </div>
