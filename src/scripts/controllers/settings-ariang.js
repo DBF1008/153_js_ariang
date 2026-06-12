@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    angular.module('ariaNg').controller('AriaNgSettingsController', ['$rootScope', '$scope', '$routeParams', '$window', '$interval', '$timeout', '$filter', 'clipboard', 'ariaNgLanguages', 'ariaNgCommonService', 'ariaNgVersionService', 'ariaNgKeyboardService', 'ariaNgNotificationService', 'ariaNgLocalizationService', 'ariaNgLogService', 'ariaNgFileService', 'ariaNgSettingService', 'ariaNgMonitorService', 'ariaNgTitleService', 'aria2SettingService', function ($rootScope, $scope, $routeParams, $window, $interval, $timeout, $filter, clipboard, ariaNgLanguages, ariaNgCommonService, ariaNgVersionService, ariaNgKeyboardService, ariaNgNotificationService, ariaNgLocalizationService, ariaNgLogService, ariaNgFileService, ariaNgSettingService, ariaNgMonitorService, ariaNgTitleService, aria2SettingService) {
+    angular.module('ariaNg').controller('AriaNgSettingsController', ['$rootScope', '$scope', '$routeParams', '$window', '$interval', '$timeout', '$filter', 'clipboard', 'ariaNgLanguages', 'ariaNgCommonService', 'ariaNgVersionService', 'ariaNgKeyboardService', 'ariaNgNotificationService', 'ariaNgLocalizationService', 'ariaNgLanguageOverrideService', 'ariaNgLogService', 'ariaNgFileService', 'ariaNgSettingService', 'ariaNgMonitorService', 'ariaNgTitleService', 'aria2SettingService', function ($rootScope, $scope, $routeParams, $window, $interval, $timeout, $filter, clipboard, ariaNgLanguages, ariaNgCommonService, ariaNgVersionService, ariaNgKeyboardService, ariaNgNotificationService, ariaNgLocalizationService, ariaNgLanguageOverrideService, ariaNgLogService, ariaNgFileService, ariaNgSettingService, ariaNgMonitorService, ariaNgTitleService, aria2SettingService) {
         var extendType = $routeParams.extendType;
         var lastRefreshPageNotification = null;
 
@@ -84,7 +84,10 @@
             importSettings: null,
             exportSettings: null,
             exportSettingsCopied: false,
-            exportCommandApiOptions: null
+            exportCommandApiOptions: null,
+            languageOverrides: [],
+            importLanguageOverride: null,
+            importLanguageOverrideBase: null
         };
 
         $scope.context.titlePreview = getFinalTitle();
@@ -326,6 +329,87 @@
             });
             $scope.context.exportSettingsCopied = true;
         };
+
+        var refreshLanguageOverrideList = function () {
+            var overrides = ariaNgLanguageOverrideService.getAllOverrides();
+            var list = [];
+
+            for (var i = 0; i < $scope.context.languages.length; i++) {
+                var language = $scope.context.languages[i];
+
+                if (!overrides[language.type]) {
+                    continue;
+                }
+
+                list.push({
+                    language: language.type,
+                    name: language.name,
+                    displayName: language.displayName,
+                    keyCount: ariaNgLanguageOverrideService.getOverrideKeyCount(language.type)
+                });
+            }
+
+            $scope.context.languageOverrides = list;
+        };
+
+        $scope.showImportLanguageOverrideModal = function () {
+            $scope.context.importLanguageOverride = null;
+            $scope.context.importLanguageOverrideBase = $scope.context.settings.language;
+            angular.element('#import-language-override-modal').modal();
+        };
+
+        $('#import-language-override-modal').on('hide.bs.modal', function (e) {
+            $scope.context.importLanguageOverride = null;
+        });
+
+        $scope.openLanguageOverrideFile = function () {
+            ariaNgFileService.openFileContent({
+                scope: $scope,
+                fileFilter: '.txt',
+                fileType: 'text'
+            }, function (result) {
+                $scope.context.importLanguageOverride = result.content;
+            }, function (error) {
+                ariaNgCommonService.showError(error);
+            }, angular.element('#import-language-override-file-holder'));
+        };
+
+        $scope.importLanguageOverride = function (baseLanguage, content) {
+            if (!baseLanguage || !ariaNgLanguageOverrideService.isValidLanguagePack(content)) {
+                ariaNgLogService.error('[AriaNgSettingsController.importLanguageOverride] language override content is empty or invalid');
+                ariaNgCommonService.showError('Invalid language override data format!');
+                return;
+            }
+
+            ariaNgCommonService.confirm('Confirm Import', 'Are you sure you want to import this language override?', 'warning', function () {
+                if (!ariaNgLanguageOverrideService.saveOverride(baseLanguage, content)) {
+                    ariaNgCommonService.showError('Invalid language override data format!');
+                    return;
+                }
+
+                ariaNgLocalizationService.reloadTranslations();
+                refreshLanguageOverrideList();
+
+                angular.element('#import-language-override-modal').modal('hide');
+                ariaNgNotificationService.notifyInPage('', 'Language override has been imported.', {
+                    type: 'success'
+                });
+            });
+        };
+
+        $scope.removeLanguageOverride = function (override) {
+            ariaNgCommonService.confirm('Confirm Remove', 'Are you sure you want to remove this language override?', 'warning', function () {
+                ariaNgLanguageOverrideService.removeOverride(override.language);
+                ariaNgLocalizationService.reloadTranslations();
+                refreshLanguageOverrideList();
+
+                ariaNgNotificationService.notifyInPage('', 'Language override has been removed.', {
+                    type: 'success'
+                });
+            });
+        };
+
+        refreshLanguageOverrideList();
 
         $scope.addNewRpcSetting = function () {
             setNeedRefreshPage();

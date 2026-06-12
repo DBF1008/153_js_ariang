@@ -7,6 +7,7 @@
         optionStorageKey: 'Options',
         browserNotificationHistoryStorageKey: 'Notifications',
         languageStorageKeyPrefix: 'Language',
+        languageOverrideStorageKey: 'LanguageOverride',
         settingHistoryKeyPrefix: 'History',
         languagePath: 'langs',
         languageFileExtension: '.txt',

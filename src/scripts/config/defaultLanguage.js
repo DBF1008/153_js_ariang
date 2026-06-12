@@ -1,9 +1,21 @@
 (function () {
     'use strict';
 
-    angular.module('ariaNg').config(['$translateProvider', 'ariaNgConstants', function ($translateProvider, ariaNgConstants) {
-        var defaultLanguageResource = {
+    function getDefaultLanguageResource() {
+        return {
             'AriaNg Version': 'AriaNg Version',
+            'Custom Language Override': 'Custom Language Override',
+            'Import Language Override': 'Import Language Override',
+            'Base Language': 'Base Language',
+            'Language override data': 'Language override data',
+            'Are you sure you want to import this language override?': 'Are you sure you want to import this language override?',
+            'Are you sure you want to remove this language override?': 'Are you sure you want to remove this language override?',
+            'Language override has been imported.': 'Language override has been imported.',
+            'Language override has been removed.': 'Language override has been removed.',
+            'Invalid language override data format!': 'Invalid language override data format!',
+            'No custom language override.': 'No custom language override.',
+            'Overridden strings': 'Overridden strings',
+            'Override packs partially replace the strings of the selected language. Any string you do not override falls back to the built-in language, and changes take effect immediately.': 'Override packs partially replace the strings of the selected language. Any string you do not override falls back to the built-in language, and changes take effect immediately.',
             'Operation Result': 'Operation Result',
             'Operation Succeeded': 'Operation Succeeded',
             'is connected': 'is connected',
@@ -741,7 +753,13 @@
                 'truncate-console-readout.description': 'Truncate console readout to fit in a single line.'
             }
         };
+    }
 
+    var defaultLanguageResource = getDefaultLanguageResource();
+
+    angular.module('ariaNg').constant('ariaNgDefaultLanguageResource', defaultLanguageResource);
+
+    angular.module('ariaNg').config(['$translateProvider', 'ariaNgConstants', function ($translateProvider, ariaNgConstants) {
         $translateProvider.translations(ariaNgConstants.defaultLanguage, defaultLanguageResource);
     }]);
 }());
