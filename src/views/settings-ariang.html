@@ -449,28 +449,159 @@
     <div id="import-settings-modal" class="modal fade" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                    <h4 class="modal-title">
-                        <span translate>Import Settings</span>
-                        <small>
-                            <a class="pointer-cursor" title="{{'Open' | translate}}" ng-click="openAriaNgConfigFile()">
-                                <i class="icon-primary fa fa-folder-open-o"></i>
-                            </a>
-                        </small>
-                    </h4>
-                </div>
-                <div class="modal-body no-padding">
-                    <div class="settings-table striped">
-                        <input id="import-file-holder" type="file" style="display: none"/>
-                        <textarea class="form-control" ng-model="context.importSettings" rows="20"
-                                  ng-placeholder="'AriaNg settings data' | translate"></textarea>
+                <!-- Step 1: Input -->
+                <div ng-if="context.importStep === 'input'">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title">
+                            <span translate>Import Settings</span>
+                            <small>
+                                <a class="pointer-cursor" title="{{'Open' | translate}}" ng-click="openAriaNgConfigFile()">
+                                    <i class="icon-primary fa fa-folder-open-o"></i>
+                                </a>
+                            </small>
+                        </h4>
+                    </div>
+                    <div class="modal-body no-padding">
+                        <div class="settings-table striped">
+                            <input id="import-file-holder" type="file" style="display: none"/>
+                            <textarea class="form-control" ng-model="context.importSettings" rows="20"
+                                      ng-placeholder="'AriaNg settings data' | translate"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" ng-disabled="!context.importSettings || !context.importSettings.length"
+                                ng-click="previewImportSettings(context.importSettings)" translate>Preview Import</button>
+                        <button type="button" class="btn btn-default" data-dismiss="modal" translate>Cancel</button>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" ng-disabled="!context.importSettings || !context.importSettings.length"
-                            ng-click="importSettings(context.importSettings)" translate>Import</button>
-                    <button type="button" class="btn btn-default" data-dismiss="modal" translate>Cancel</button>
+                <!-- Step 2: Preview & Select -->
+                <div ng-if="context.importStep === 'preview'">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title">
+                            <span translate>Import Preview</span>
+                            <small>
+                                <a class="pointer-cursor" ng-click="backToImportInput()" title="{{'Back' | translate}}">
+                                    <i class="icon-primary fa fa-arrow-left"></i>
+                                </a>
+                            </small>
+                        </h4>
+                    </div>
+                    <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                        <!-- Section: Global Settings -->
+                        <div style="margin-bottom: 16px;">
+                            <div style="padding: 8px 12px; background: #f4f4f4; border: 1px solid #ddd; border-radius: 3px;">
+                                <label style="margin: 0; font-weight: 600; cursor: pointer;">
+                                    <input type="checkbox"
+                                           ng-checked="context.importSelections.importGlobalSettings"
+                                           ng-click="toggleImportGlobalSettings()"/>
+                                    <span translate>Global Settings</span>
+                                </label>
+                                <span class="label label-info" style="margin-left: 8px;"
+                                      ng-if="context.importComparison.globalSettings.hasChanges"
+                                      translate translate-values="{count: (context.importComparison.globalSettings.fields | filter:{changed:true}).length}">{count} field(s) changed</span>
+                                <span class="text-muted" style="margin-left: 8px;"
+                                      ng-if="!context.importComparison.globalSettings.hasChanges" translate>No changes detected</span>
+                            </div>
+                            <table class="table table-condensed table-striped" style="margin-top: 8px;"
+                                   ng-if="context.importComparison.globalSettings.hasChanges">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 30px;"></th>
+                                        <th translate>Setting Name</th>
+                                        <th translate>Current Value</th>
+                                        <th translate>Imported Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="field in context.importComparison.globalSettings.fields | filter:{changed:true}">
+                                        <td>
+                                            <input type="checkbox"
+                                                   ng-model="context.importSelections.globalSettings[field.key]"/>
+                                        </td>
+                                        <td><code ng-bind="field.key"></code></td>
+                                        <td><code ng-bind="field.currentValue"></code></td>
+                                        <td><code ng-bind="field.importedValue"></code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Section: Default RPC Connection -->
+                        <div style="margin-bottom: 16px;">
+                            <div style="padding: 8px 12px; background: #f4f4f4; border: 1px solid #ddd; border-radius: 3px;">
+                                <label style="margin: 0; font-weight: 600; cursor: pointer;">
+                                    <input type="checkbox"
+                                           ng-model="context.importSelections.importDefaultRpc"
+                                           ng-disabled="!context.importComparison.defaultRpc.hasChanges"/>
+                                    <span translate>Default RPC Connection</span>
+                                </label>
+                                <span class="label label-info" style="margin-left: 8px;"
+                                      ng-if="context.importComparison.defaultRpc.hasChanges"
+                                      translate translate-values="{count: (context.importComparison.defaultRpc.fields | filter:{changed:true}).length}">{count} field(s) changed</span>
+                                <span class="text-muted" style="margin-left: 8px;"
+                                      ng-if="!context.importComparison.defaultRpc.hasChanges" translate>No changes detected</span>
+                            </div>
+                            <table class="table table-condensed table-striped" style="margin-top: 8px;"
+                                   ng-if="context.importComparison.defaultRpc.hasChanges">
+                                <thead>
+                                    <tr>
+                                        <th translate>Setting Name</th>
+                                        <th translate>Current Value</th>
+                                        <th translate>Imported Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="field in context.importComparison.defaultRpc.fields | filter:{changed:true}">
+                                        <td><code ng-bind="field.key"></code></td>
+                                        <td>
+                                            <span ng-if="field.key !== 'secret'"><code ng-bind="field.currentValue"></code></span>
+                                            <span ng-if="field.key === 'secret'">••••••</span>
+                                        </td>
+                                        <td>
+                                            <span ng-if="field.key !== 'secret'"><code ng-bind="field.importedValue"></code></span>
+                                            <span ng-if="field.key === 'secret'">••••••</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Section: Extended RPC Servers -->
+                        <div style="margin-bottom: 16px;">
+                            <div style="padding: 8px 12px; background: #f4f4f4; border: 1px solid #ddd; border-radius: 3px;">
+                                <span style="font-weight: 600;" translate>Extended RPC Servers</span>
+                                <span class="label label-info" style="margin-left: 8px;"
+                                      ng-if="context.importComparison.extendedRpcServers.length > 0"
+                                      ng-bind="'(' + context.importComparison.extendedRpcServers.length + ')'"></span>
+                                <span class="text-muted" style="margin-left: 8px;"
+                                      ng-if="context.importComparison.extendedRpcServers.length === 0" translate>No extended RPC servers in imported config</span>
+                            </div>
+                            <div ng-if="context.importComparison.extendedRpcServers.length > 0" style="margin-top: 8px;">
+                                <div ng-repeat="rpc in context.importComparison.extendedRpcServers"
+                                     style="padding: 8px 12px; border-bottom: 1px solid #eee;">
+                                    <label style="margin: 0; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox"
+                                               ng-checked="context.importSelections.extendedRpcServers[$index].selected"
+                                               ng-click="toggleImportExtendedRpc($index)"/>
+                                        <strong ng-bind="rpc.displayName"></strong>
+                                    </label>
+                                    <span class="label label-success" style="margin-left: 8px;"
+                                          ng-if="rpc.status === 'new'" translate>New</span>
+                                    <span class="label label-warning" style="margin-left: 8px;"
+                                          ng-if="rpc.status === 'duplicate'" translate>Duplicate</span>
+                                    <div class="text-muted" style="font-size: 12px; margin-left: 20px;"
+                                         ng-bind="rpc.identityKey"></div>
+                                    <div class="text-warning" style="font-size: 12px; margin-left: 20px;"
+                                         ng-if="rpc.status === 'duplicate'" translate>Will override existing</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" ng-click="backToImportInput()" translate>Back</button>
+                        <button type="button" class="btn btn-primary" ng-click="applySelectedImport()" translate>Import Selected</button>
+                        <button type="button" class="btn btn-default" data-dismiss="modal" translate>Cancel</button>
+                    </div>
                 </div>
             </div>
         </div>

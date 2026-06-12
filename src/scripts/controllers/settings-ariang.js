@@ -82,6 +82,10 @@
             isSupportBlob: ariaNgFileService.isSupportBlob(),
             isSupportDarkMode: ariaNgSettingService.isBrowserSupportDarkMode(),
             importSettings: null,
+            importStep: 'input',
+            importComparison: null,
+            importSelections: null,
+            importSettingsObj: null,
             exportSettings: null,
             exportSettingsCopied: false,
             exportCommandApiOptions: null
@@ -265,11 +269,19 @@
 
         $scope.showImportSettingsModal = function () {
             $scope.context.importSettings = null;
+            $scope.context.importStep = 'input';
+            $scope.context.importComparison = null;
+            $scope.context.importSelections = null;
+            $scope.context.importSettingsObj = null;
             angular.element('#import-settings-modal').modal();
         };
 
         $('#import-settings-modal').on('hide.bs.modal', function (e) {
             $scope.context.importSettings = null;
+            $scope.context.importStep = 'input';
+            $scope.context.importComparison = null;
+            $scope.context.importSelections = null;
+            $scope.context.importSettingsObj = null;
         });
 
         $scope.openAriaNgConfigFile = function () {
@@ -284,29 +296,85 @@
             }, angular.element('#import-file-holder'));
         };
 
-        $scope.importSettings = function (settings) {
+        $scope.previewImportSettings = function (settings) {
             var settingsObj = null;
 
             try {
                 settingsObj = JSON.parse(settings);
             } catch (e) {
-                ariaNgLogService.error('[AriaNgSettingsController.importSettings] parse settings json error', e);
+                ariaNgLogService.error('[AriaNgSettingsController.previewImportSettings] parse settings json error', e);
                 ariaNgCommonService.showError('Invalid settings data format!');
                 return;
             }
 
             if (!angular.isObject(settingsObj) || angular.isArray(settingsObj)) {
-                ariaNgLogService.error('[AriaNgSettingsController.importSettings] settings json is not object');
+                ariaNgLogService.error('[AriaNgSettingsController.previewImportSettings] settings json is not object');
                 ariaNgCommonService.showError('Invalid settings data format!');
                 return;
             }
 
-            if (settingsObj) {
-                ariaNgCommonService.confirm('Confirm Import', 'Are you sure you want to import all settings?', 'warning', function () {
-                    ariaNgSettingService.importAllOptions(settingsObj);
-                    $window.location.reload();
+            var comparison = ariaNgSettingService.compareImportOptions(settingsObj);
+
+            var globalSettingsSelection = {};
+            for (var i = 0; i < comparison.globalSettings.fields.length; i++) {
+                var field = comparison.globalSettings.fields[i];
+                if (field.changed) {
+                    globalSettingsSelection[field.key] = true;
+                }
+            }
+
+            var extendedRpcServersSelection = [];
+            for (var j = 0; j < comparison.extendedRpcServers.length; j++) {
+                extendedRpcServersSelection.push({
+                    selected: comparison.extendedRpcServers[j].status === 'new',
+                    action: comparison.extendedRpcServers[j].status === 'duplicate' ? 'update' : 'add'
                 });
             }
+
+            $scope.context.importComparison = comparison;
+            $scope.context.importSettingsObj = settingsObj;
+            $scope.context.importSelections = {
+                importGlobalSettings: comparison.globalSettings.hasChanges,
+                globalSettings: globalSettingsSelection,
+                importDefaultRpc: comparison.defaultRpc.hasChanges,
+                extendedRpcServers: extendedRpcServersSelection
+            };
+            $scope.context.importStep = 'preview';
+        };
+
+        $scope.backToImportInput = function () {
+            $scope.context.importStep = 'input';
+            $scope.context.importComparison = null;
+            $scope.context.importSelections = null;
+            $scope.context.importSettingsObj = null;
+        };
+
+        $scope.toggleImportGlobalSettings = function () {
+            var newValue = !$scope.context.importSelections.importGlobalSettings;
+            $scope.context.importSelections.importGlobalSettings = newValue;
+
+            var fields = $scope.context.importComparison.globalSettings.fields;
+            for (var i = 0; i < fields.length; i++) {
+                if (fields[i].changed) {
+                    $scope.context.importSelections.globalSettings[fields[i].key] = newValue;
+                }
+            }
+        };
+
+        $scope.toggleImportExtendedRpc = function (index) {
+            $scope.context.importSelections.extendedRpcServers[index].selected = !$scope.context.importSelections.extendedRpcServers[index].selected;
+        };
+
+        $scope.applySelectedImport = function () {
+            ariaNgCommonService.confirm('Confirm Import', 'Are you sure you want to import the selected settings?', 'warning', function () {
+                try {
+                    ariaNgSettingService.importSelectedOptions($scope.context.importSettingsObj, $scope.context.importSelections);
+                    $window.location.reload();
+                } catch (e) {
+                    ariaNgLogService.error('[AriaNgSettingsController.applySelectedImport] apply import error', e);
+                    ariaNgCommonService.showError('Failed to apply import settings!');
+                }
+            });
         };
 
         $scope.showExportSettingsModal = function () {

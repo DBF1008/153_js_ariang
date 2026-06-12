@@ -231,6 +231,15 @@
             return setting;
         };
 
+        var RPC_SCALAR_KEYS = ['rpcAlias', 'rpcHost', 'rpcPort', 'rpcInterface', 'protocol', 'httpMethod', 'rpcRequestHeaders', 'secret'];
+
+        var isSameRpcIdentity = function (a, b) {
+            return (a.protocol || '') === (b.protocol || '') &&
+                   (a.rpcHost || '') === (b.rpcHost || '') &&
+                   (a.rpcPort || '') === (b.rpcPort || '') &&
+                   (a.rpcInterface || '') === (b.rpcInterface || '');
+        };
+
         return {
             isBrowserSupportStorage: function () {
                 return browserSupportStorage;
@@ -326,6 +335,187 @@
                 }
 
                 setOptions(finalOptions);
+            },
+            compareImportOptions: function (importedOptions) {
+                var currentOptions = angular.extend({}, ariaNgDefaultOptions, getOptions());
+
+                var globalFields = [];
+                var hasGlobalChanges = false;
+
+                for (var key in ariaNgDefaultOptions) {
+                    if (!ariaNgDefaultOptions.hasOwnProperty(key)) {
+                        continue;
+                    }
+
+                    if (key === 'extendRpcServers' || RPC_SCALAR_KEYS.indexOf(key) >= 0) {
+                        continue;
+                    }
+
+                    if (angular.isObject(ariaNgDefaultOptions[key]) || angular.isArray(ariaNgDefaultOptions[key])) {
+                        continue;
+                    }
+
+                    var currentVal = currentOptions[key];
+                    var importedVal = importedOptions.hasOwnProperty(key) ? importedOptions[key] : currentVal;
+                    var changed = currentVal !== importedVal;
+
+                    if (changed) {
+                        hasGlobalChanges = true;
+                    }
+
+                    globalFields.push({
+                        key: key,
+                        currentValue: currentVal,
+                        importedValue: importedVal,
+                        changed: changed
+                    });
+                }
+
+                var defaultRpcFields = [];
+                var hasDefaultRpcChanges = false;
+
+                for (var i = 0; i < RPC_SCALAR_KEYS.length; i++) {
+                    var rpcKey = RPC_SCALAR_KEYS[i];
+                    var currentRpcVal = currentOptions[rpcKey] || '';
+                    var importedRpcVal = importedOptions.hasOwnProperty(rpcKey) ? importedOptions[rpcKey] : currentRpcVal;
+                    var rpcChanged = currentRpcVal !== importedRpcVal;
+
+                    if (rpcChanged) {
+                        hasDefaultRpcChanges = true;
+                    }
+
+                    defaultRpcFields.push({
+                        key: rpcKey,
+                        currentValue: currentRpcVal,
+                        importedValue: importedRpcVal,
+                        changed: rpcChanged
+                    });
+                }
+
+                var allCurrentRpc = [angular.extend({ rpcId: null, isDefault: true }, cloneRpcSetting(currentOptions))];
+                if (angular.isArray(currentOptions.extendRpcServers)) {
+                    for (var j = 0; j < currentOptions.extendRpcServers.length; j++) {
+                        var extRpc = currentOptions.extendRpcServers[j];
+                        allCurrentRpc.push(angular.extend({ rpcId: extRpc.rpcId, isDefault: false }, cloneRpcSetting(extRpc)));
+                    }
+                }
+
+                var extendedRpcResult = [];
+
+                if (angular.isArray(importedOptions.extendRpcServers)) {
+                    for (var k = 0; k < importedOptions.extendRpcServers.length; k++) {
+                        var importedRpc = importedOptions.extendRpcServers[k];
+                        var isDuplicate = false;
+                        var matchIndex = -1;
+
+                        for (var m = 0; m < allCurrentRpc.length; m++) {
+                            if (isSameRpcIdentity(importedRpc, allCurrentRpc[m])) {
+                                isDuplicate = true;
+                                matchIndex = m;
+                                break;
+                            }
+                        }
+
+                        var cleanRpc = {};
+                        for (var n = 0; n < RPC_SCALAR_KEYS.length; n++) {
+                            var scalarKey = RPC_SCALAR_KEYS[n];
+                            if (importedRpc.hasOwnProperty(scalarKey) && !(angular.isObject(importedRpc[scalarKey]) || angular.isArray(importedRpc[scalarKey]))) {
+                                cleanRpc[scalarKey] = importedRpc[scalarKey];
+                            }
+                        }
+
+                        extendedRpcResult.push({
+                            identityKey: (importedRpc.protocol || '') + '://' + (importedRpc.rpcHost || '') + ':' + (importedRpc.rpcPort || '') + '/' + (importedRpc.rpcInterface || ''),
+                            displayName: importedRpc.rpcAlias || (importedRpc.rpcHost + ':' + importedRpc.rpcPort),
+                            status: isDuplicate ? 'duplicate' : 'new',
+                            matchIndex: matchIndex,
+                            importedSetting: cleanRpc
+                        });
+                    }
+                }
+
+                return {
+                    globalSettings: {
+                        hasChanges: hasGlobalChanges,
+                        fields: globalFields
+                    },
+                    defaultRpc: {
+                        hasChanges: hasDefaultRpcChanges,
+                        fields: defaultRpcFields
+                    },
+                    extendedRpcServers: extendedRpcResult
+                };
+            },
+            importSelectedOptions: function (importedOptions, selections) {
+                var currentOptions = getOptions();
+
+                if (!currentOptions.extendRpcServers) {
+                    currentOptions.extendRpcServers = [];
+                }
+
+                if (selections.importGlobalSettings) {
+                    for (var key in selections.globalSettings) {
+                        if (!selections.globalSettings.hasOwnProperty(key)) {
+                            continue;
+                        }
+
+                        if (selections.globalSettings[key] && importedOptions.hasOwnProperty(key)) {
+                            currentOptions[key] = importedOptions[key];
+                        }
+                    }
+                }
+
+                if (selections.importDefaultRpc) {
+                    for (var i = 0; i < RPC_SCALAR_KEYS.length; i++) {
+                        var rpcKey = RPC_SCALAR_KEYS[i];
+                        if (importedOptions.hasOwnProperty(rpcKey)) {
+                            currentOptions[rpcKey] = importedOptions[rpcKey];
+                        }
+                    }
+                }
+
+                if (angular.isArray(importedOptions.extendRpcServers) && angular.isArray(selections.extendedRpcServers)) {
+                    for (var j = 0; j < importedOptions.extendRpcServers.length; j++) {
+                        if (!selections.extendedRpcServers[j] || !selections.extendedRpcServers[j].selected) {
+                            continue;
+                        }
+
+                        var importedRpc = importedOptions.extendRpcServers[j];
+
+                        if (selections.extendedRpcServers[j].action === 'add') {
+                            var newSetting = createNewRpcSetting();
+
+                            for (var k = 0; k < RPC_SCALAR_KEYS.length; k++) {
+                                var scalarKey = RPC_SCALAR_KEYS[k];
+                                if (importedRpc.hasOwnProperty(scalarKey) && !(angular.isObject(importedRpc[scalarKey]) || angular.isArray(importedRpc[scalarKey]))) {
+                                    newSetting[scalarKey] = importedRpc[scalarKey];
+                                }
+                            }
+
+                            currentOptions.extendRpcServers.push(newSetting);
+                        } else if (selections.extendedRpcServers[j].action === 'update') {
+                            var matchIdx = -1;
+
+                            for (var m = 0; m < currentOptions.extendRpcServers.length; m++) {
+                                if (isSameRpcIdentity(importedRpc, currentOptions.extendRpcServers[m])) {
+                                    matchIdx = m;
+                                    break;
+                                }
+                            }
+
+                            if (matchIdx >= 0) {
+                                for (var n = 0; n < RPC_SCALAR_KEYS.length; n++) {
+                                    var updateKey = RPC_SCALAR_KEYS[n];
+                                    if (importedRpc.hasOwnProperty(updateKey) && !(angular.isObject(importedRpc[updateKey]) || angular.isArray(importedRpc[updateKey]))) {
+                                        currentOptions.extendRpcServers[matchIdx][updateKey] = importedRpc[updateKey];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                setOptions(currentOptions);
             },
             exportAllOptions: function () {
                 var options = angular.extend({}, ariaNgDefaultOptions, getOptions());
