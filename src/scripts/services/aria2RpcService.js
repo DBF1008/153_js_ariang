@@ -273,14 +273,16 @@
             return result;
         };
 
-        (function () {
+        var registerAllEvents = function () {
             registerEvent('onDownloadStart', onDownloadStartCallbacks);
             registerEvent('onDownloadPause', onDownloadPauseCallbacks);
             registerEvent('onDownloadStop', onDownloadStopCallbacks);
             registerEvent('onDownloadComplete', onDownloadCompleteCallbacks);
             registerEvent('onDownloadError', onDownloadErrorCallbacks);
             registerEvent('onBtDownloadComplete', onBtDownloadCompleteCallbacks);
-        })();
+        };
+
+        registerAllEvents();
 
         return {
             getBasicTaskParams: function () {
@@ -314,6 +316,25 @@
             reconnect: function (context) {
                 ariaNgLogService.info("[aria2RpcService.reconnect] reconnect now");
                 rpcImplementService.reconnect(buildRequestContext('', context));
+            },
+            reloadRpcConfig: function () {
+                var oldImplementService = rpcImplementService;
+                var newImplementService = ariaNgSettingService.isCurrentRpcUseWebSocket() ? aria2WebSocketRpcService : aria2HttpRpcService;
+
+                isConnected = false;
+                secret = ariaNgSettingService.getCurrentRpcSecret();
+
+                if (oldImplementService !== newImplementService && oldImplementService.setRpcConfig) {
+                    oldImplementService.setRpcConfig();
+                }
+
+                rpcImplementService = newImplementService;
+
+                if (rpcImplementService.setRpcConfig) {
+                    rpcImplementService.setRpcConfig();
+                }
+
+                registerAllEvents();
             },
             addUri: function (context, returnContextOnly) {
                 var urls = context.task ? context.task.urls : null;

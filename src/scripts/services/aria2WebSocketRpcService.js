@@ -8,6 +8,7 @@
         var rpcUrl = ariaNgSettingService.getCurrentRpcUrl();
         var socketClient = null;
         var pendingReconnect = null;
+        var currentSocketGeneration = 0;
 
         var sendIdStates = {};
         var eventCallbacks = {};
@@ -110,6 +111,8 @@
 
         var getSocketClient = function (context) {
             if (socketClient === null) {
+                var thisGeneration = currentSocketGeneration;
+
                 try {
                     socketClient = $websocket(rpcUrl, {
                         maxTimeout: 1, // ms
@@ -138,6 +141,10 @@
                     });
 
                     socketClient.onOpen(function (e) {
+                        if (thisGeneration !== currentSocketGeneration) {
+                            return;
+                        }
+
                         ariaNgLogService.debug('[aria2WebSocketRpcService.onOpen] websocket is opened', e);
 
                         if (context && context.connectionSuccessCallback) {
@@ -148,6 +155,10 @@
                     });
 
                     socketClient.onClose(function (e) {
+                        if (thisGeneration !== currentSocketGeneration) {
+                            return;
+                        }
+
                         ariaNgLogService.warn('[aria2WebSocketRpcService.onClose] websocket is closed', e);
 
                         var enableAutoReconnect = ariaNgSettingService.getWebSocketReconnectInterval() > 0;
@@ -244,6 +255,44 @@
             ariaNgLogService.debug('[aria2WebSocketRpcService.planToReconnect] next reconnection is pending in ' + ariaNgSettingService.getWebSocketReconnectInterval() + "ms");
         }
 
+        var setRpcConfig = function () {
+            rpcUrl = ariaNgSettingService.getCurrentRpcUrl();
+            currentSocketGeneration++;
+            eventCallbacks = {};
+
+            for (var uniqueId in sendIdStates) {
+                if (!sendIdStates.hasOwnProperty(uniqueId)) {
+                    continue;
+                }
+
+                var state = sendIdStates[uniqueId];
+
+                if (state && state.deferred) {
+                    state.deferred.reject({
+                        success: false,
+                        context: state.context
+                    });
+                }
+            }
+
+            sendIdStates = {};
+
+            if (pendingReconnect) {
+                $timeout.cancel(pendingReconnect);
+                pendingReconnect = null;
+            }
+
+            if (socketClient) {
+                try {
+                    socketClient.close(true);
+                } catch (ex) {
+                    ariaNgLogService.warn('[aria2WebSocketRpcService.setRpcConfig] failed to close websocket', ex);
+                }
+
+                socketClient = null;
+            }
+        };
+
         return {
             request: function (context) {
                 if (!context) {
@@ -281,6 +330,9 @@
                 }
 
                 return deferred.promise;
+            },
+            setRpcConfig: function () {
+                setRpcConfig();
             },
             reconnect: function (context) {
                 reconnect(context);

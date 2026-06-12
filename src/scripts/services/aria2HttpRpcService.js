@@ -134,6 +134,11 @@
                     }
                 });
             },
+            setRpcConfig: function () {
+                rpcUrl = ariaNgSettingService.getCurrentRpcUrl();
+                method = ariaNgSettingService.getCurrentRpcHttpMethod();
+                requestHeaders = ariaNgSettingService.getCurrentRpcRequestHeaders();
+            },
             reconnect: function () {
                 //Not implement
             },
