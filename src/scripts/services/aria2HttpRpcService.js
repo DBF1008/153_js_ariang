@@ -2,9 +2,11 @@
     'use strict';
 
     angular.module('ariaNg').factory('aria2HttpRpcService', ['$http', 'ariaNgConstants', 'ariaNgCommonService', 'ariaNgSettingService', 'ariaNgLogService', function ($http, ariaNgConstants, ariaNgCommonService, ariaNgSettingService, ariaNgLogService) {
-        var rpcUrl = ariaNgSettingService.getCurrentRpcUrl();
-        var method = ariaNgSettingService.getCurrentRpcHttpMethod();
-        var requestHeaders = ariaNgSettingService.getCurrentRpcRequestHeaders();
+        var currentConfig = {
+            rpcUrl: ariaNgSettingService.getCurrentRpcUrl(),
+            method: ariaNgSettingService.getCurrentRpcHttpMethod(),
+            requestHeaders: ariaNgSettingService.getCurrentRpcRequestHeaders()
+        };
 
         var getUrlWithQueryString = function (url, parameters) {
             if (!url || url.length < 1) {
@@ -57,8 +59,8 @@
                 }
 
                 var requestContext = {
-                    url: rpcUrl,
-                    method: method,
+                    url: currentConfig.rpcUrl,
+                    method: currentConfig.method,
                     headers: {},
                     timeout: ariaNgConstants.httpRequestTimeout
                 };
@@ -70,8 +72,8 @@
                     requestContext.url = getUrlWithQueryString(requestContext.url, context.requestBody);
                 }
 
-                if (requestHeaders) {
-                    var lines = requestHeaders.split('\n');
+                if (currentConfig.requestHeaders) {
+                    var lines = currentConfig.requestHeaders.split('\n');
 
                     for (var i = 0; i < lines.length; i++) {
                         var items = lines[i].split(':');
@@ -100,8 +102,8 @@
 
                     if (context.connectionSuccessCallback) {
                         context.connectionSuccessCallback({
-                            rpcUrl: rpcUrl,
-                            method: method
+                            rpcUrl: currentConfig.rpcUrl,
+                            method: currentConfig.method
                         });
                     }
 
@@ -123,8 +125,8 @@
 
                         if (context.connectionFailedCallback) {
                             context.connectionFailedCallback({
-                                rpcUrl: rpcUrl,
-                                method: method
+                                rpcUrl: currentConfig.rpcUrl,
+                                method: currentConfig.method
                             });
                         }
                     }
@@ -136,6 +138,11 @@
             },
             reconnect: function () {
                 //Not implement
+            },
+            reconfigure: function () {
+                currentConfig.rpcUrl = ariaNgSettingService.getCurrentRpcUrl();
+                currentConfig.method = ariaNgSettingService.getCurrentRpcHttpMethod();
+                currentConfig.requestHeaders = ariaNgSettingService.getCurrentRpcRequestHeaders();
             },
             on: function (eventName, callback) {
                 //Not implement

@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    angular.module('ariaNg').controller('MainController', ['$rootScope', '$scope', '$route', '$window', '$location', '$document', '$interval', 'clipboard', 'aria2RpcErrors', 'ariaNgCommonService', 'ariaNgVersionService', 'ariaNgNotificationService', 'ariaNgSettingService', 'ariaNgMonitorService', 'ariaNgTitleService', 'aria2TaskService', 'aria2SettingService', function ($rootScope, $scope, $route, $window, $location, $document, $interval, clipboard, aria2RpcErrors, ariaNgCommonService, ariaNgVersionService, ariaNgNotificationService, ariaNgSettingService, ariaNgMonitorService, ariaNgTitleService, aria2TaskService, aria2SettingService) {
+    angular.module('ariaNg').controller('MainController', ['$rootScope', '$scope', '$route', '$window', '$location', '$document', '$interval', 'clipboard', 'aria2RpcErrors', 'ariaNgCommonService', 'ariaNgVersionService', 'ariaNgNotificationService', 'ariaNgSettingService', 'ariaNgMonitorService', 'ariaNgTitleService', 'aria2RpcService', 'aria2TaskService', 'aria2SettingService', function ($rootScope, $scope, $route, $window, $location, $document, $interval, clipboard, aria2RpcErrors, ariaNgCommonService, ariaNgVersionService, ariaNgNotificationService, ariaNgSettingService, ariaNgMonitorService, ariaNgTitleService, aria2RpcService, aria2TaskService, aria2SettingService) {
         var pageTitleRefreshPromise = null;
         var globalStatRefreshPromise = null;
 
@@ -427,19 +427,28 @@
             };
         };
 
+        var refreshRpcState = function () {
+            $scope.rpcSettings = ariaNgSettingService.getAllRpcSettings();
+            $scope.currentRpcProfile = getCurrentRPCProfile();
+            $scope.isCurrentRpcUseWebSocket = ariaNgSettingService.isCurrentRpcUseWebSocket();
+            refreshGlobalStat(true, function () {
+                refreshPageTitle();
+            });
+        };
+
         $scope.switchRpcSetting = function (setting) {
             if (setting.isDefault) {
                 return;
             }
 
             ariaNgSettingService.setDefaultRpcSetting(setting);
+            aria2RpcService.reconfigureConnection();
 
             if ($location.path().indexOf('/task/detail/') === 0) {
-                $rootScope.setAutoRefreshAfterPageLoad();
                 $location.path('/downloading');
-            } else {
-                $window.location.reload();
             }
+
+            refreshRpcState();
         };
 
         if (ariaNgSettingService.getTitleRefreshInterval() > 0) {

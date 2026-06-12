@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    angular.module('ariaNg').controller('CommandController', ['$rootScope', '$window', '$location', '$routeParams', 'ariaNgDefaultOptions', 'ariaNgCommonService', 'ariaNgLogService', 'ariaNgSettingService', 'aria2TaskService', 'aria2SettingService', function ($rootScope, $window, $location, $routeParams, ariaNgDefaultOptions, ariaNgCommonService, ariaNgLogService, ariaNgSettingService, aria2TaskService, aria2SettingService) {
+    angular.module('ariaNg').controller('CommandController', ['$rootScope', '$window', '$location', '$routeParams', 'ariaNgDefaultOptions', 'ariaNgCommonService', 'ariaNgLogService', 'ariaNgSettingService', 'aria2RpcService', 'aria2TaskService', 'aria2SettingService', function ($rootScope, $window, $location, $routeParams, ariaNgDefaultOptions, ariaNgCommonService, ariaNgLogService, ariaNgSettingService, aria2RpcService, aria2TaskService, aria2SettingService) {
         var path = $location.path();
 
         var doNewTaskCommand = function (url, params) {
@@ -96,8 +96,8 @@
                     forceSet: true
                 });
 
+                aria2RpcService.reconfigureConnection();
                 $location.path('/downloading');
-                $window.location.reload();
             }
 
             return true;

@@ -273,14 +273,27 @@
             return result;
         };
 
-        (function () {
-            registerEvent('onDownloadStart', onDownloadStartCallbacks);
-            registerEvent('onDownloadPause', onDownloadPauseCallbacks);
-            registerEvent('onDownloadStop', onDownloadStopCallbacks);
-            registerEvent('onDownloadComplete', onDownloadCompleteCallbacks);
-            registerEvent('onDownloadError', onDownloadErrorCallbacks);
-            registerEvent('onBtDownloadComplete', onBtDownloadCompleteCallbacks);
-        })();
+        var rpcEventNames = [
+            'onDownloadStart', 'onDownloadPause', 'onDownloadStop',
+            'onDownloadComplete', 'onDownloadError', 'onBtDownloadComplete'
+        ];
+
+        var rpcEventCallbackMap = {
+            onDownloadStart: onDownloadStartCallbacks,
+            onDownloadPause: onDownloadPauseCallbacks,
+            onDownloadStop: onDownloadStopCallbacks,
+            onDownloadComplete: onDownloadCompleteCallbacks,
+            onDownloadError: onDownloadErrorCallbacks,
+            onBtDownloadComplete: onBtDownloadCompleteCallbacks
+        };
+
+        var registerAllEvents = function () {
+            for (var i = 0; i < rpcEventNames.length; i++) {
+                registerEvent(rpcEventNames[i], rpcEventCallbackMap[rpcEventNames[i]]);
+            }
+        };
+
+        registerAllEvents();
 
         return {
             getBasicTaskParams: function () {
@@ -314,6 +327,30 @@
             reconnect: function (context) {
                 ariaNgLogService.info("[aria2RpcService.reconnect] reconnect now");
                 rpcImplementService.reconnect(buildRequestContext('', context));
+            },
+            reconfigureConnection: function () {
+                isConnected = false;
+                secret = ariaNgSettingService.getCurrentRpcSecret();
+
+                var useWebSocket = ariaNgSettingService.isCurrentRpcUseWebSocket();
+                var newImplementService = useWebSocket ? aria2WebSocketRpcService : aria2HttpRpcService;
+
+                if (rpcImplementService !== newImplementService) {
+                    if (rpcImplementService === aria2WebSocketRpcService) {
+                        aria2WebSocketRpcService.reconfigure();
+                    }
+
+                    rpcImplementService = newImplementService;
+
+                    if (useWebSocket) {
+                        aria2WebSocketRpcService.reconfigure();
+                    }
+
+                    aria2WebSocketRpcService.clearEventCallbacks();
+                    registerAllEvents();
+                } else {
+                    rpcImplementService.reconfigure();
+                }
             },
             addUri: function (context, returnContextOnly) {
                 var urls = context.task ? context.task.urls : null;

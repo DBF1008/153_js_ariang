@@ -536,9 +536,7 @@
         }
 
         $rootScope.$on('$locationChangeSuccess', function (event, newUrl) {
-            if (autoRefreshAfterPageLoad) {
-                $window.location.reload();
-            }
+            autoRefreshAfterPageLoad = false;
         });
 
         initTheme();

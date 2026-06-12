@@ -5,7 +5,9 @@
         var websocketStatusConnecting = 0;
         var websocketStatusOpen = 1;
 
-        var rpcUrl = ariaNgSettingService.getCurrentRpcUrl();
+        var currentConfig = {
+            rpcUrl: ariaNgSettingService.getCurrentRpcUrl()
+        };
         var socketClient = null;
         var pendingReconnect = null;
 
@@ -69,7 +71,7 @@
 
             if (content.result && context.connectionSuccessCallback) {
                 context.connectionSuccessCallback({
-                    rpcUrl: rpcUrl
+                    rpcUrl: currentConfig.rpcUrl
                 });
             }
 
@@ -111,7 +113,7 @@
         var getSocketClient = function (context) {
             if (socketClient === null) {
                 try {
-                    socketClient = $websocket(rpcUrl, {
+                    socketClient = $websocket(currentConfig.rpcUrl, {
                         maxTimeout: 1, // ms
                         reconnectInterval: ariaNgSettingService.getWebSocketReconnectInterval()
                     });
@@ -142,7 +144,7 @@
 
                         if (context && context.connectionSuccessCallback) {
                             context.connectionSuccessCallback({
-                                rpcUrl: rpcUrl
+                                rpcUrl: currentConfig.rpcUrl
                             });
                         }
                     });
@@ -158,11 +160,11 @@
 
                         if (enableAutoReconnect && context && context.connectionWaitingToReconnectCallback) {
                             context.connectionWaitingToReconnectCallback({
-                                rpcUrl: rpcUrl
+                                rpcUrl: currentConfig.rpcUrl
                             });
                         } else if (context && context.connectionFailedCallback) {
                             context.connectionFailedCallback({
-                                rpcUrl: rpcUrl
+                                rpcUrl: currentConfig.rpcUrl
                             });
                         }
                     });
@@ -179,6 +181,35 @@
                 success: true,
                 instance: socketClient
             };
+        };
+
+        var destroySocket = function () {
+            if (pendingReconnect) {
+                $timeout.cancel(pendingReconnect);
+                pendingReconnect = null;
+            }
+
+            for (var uniqueId in sendIdStates) {
+                if (!sendIdStates.hasOwnProperty(uniqueId)) {
+                    continue;
+                }
+
+                var state = sendIdStates[uniqueId];
+
+                if (state) {
+                    state.deferred.reject({
+                        success: false,
+                        context: state.context
+                    });
+                }
+
+                delete sendIdStates[uniqueId];
+            }
+
+            if (socketClient) {
+                try { socketClient.close(); } catch (e) { /* ignore */ }
+                socketClient = null;
+            }
         };
 
         var reconnect = function (context) {
@@ -211,7 +242,7 @@
 
             if (context.connectionReconnectingCallback) {
                 context.connectionReconnectingCallback({
-                    rpcUrl: rpcUrl
+                    rpcUrl: currentConfig.rpcUrl
                 });
             }
 
@@ -293,6 +324,14 @@
                 }
 
                 callbacks.push(callback);
+            },
+            reconfigure: function () {
+                currentConfig.rpcUrl = ariaNgSettingService.getCurrentRpcUrl();
+                destroySocket();
+                eventCallbacks = {};
+            },
+            clearEventCallbacks: function () {
+                eventCallbacks = {};
             }
         };
     }]);
