@@ -283,6 +283,56 @@
             return combinedPieces;
         };
 
+        var getTaskSearchAttribute = function (task) {
+            var attributes = [];
+
+            if (task.gid) {
+                attributes.push(task.gid);
+            }
+
+            if (task.taskName) {
+                attributes.push(task.taskName);
+            }
+
+            if (task.infoHash) {
+                attributes.push(task.infoHash);
+            }
+
+            if (task.errorDescription) {
+                attributes.push(task.errorDescription);
+
+                var localizedError = ariaNgLocalizationService.getLocalizedText(task.errorDescription);
+
+                if (localizedError) {
+                    attributes.push(localizedError);
+                }
+            }
+
+            if (angular.isArray(task.files)) {
+                for (var i = 0; i < task.files.length; i++) {
+                    var file = task.files[i];
+
+                    if (!file) {
+                        continue;
+                    }
+
+                    if (file.fileName) {
+                        attributes.push(file.fileName);
+                    }
+
+                    if (angular.isArray(file.uris)) {
+                        for (var j = 0; j < file.uris.length; j++) {
+                            if (file.uris[j] && file.uris[j].uri) {
+                                attributes.push(file.uris[j].uri);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return attributes.join('\n').toLowerCase();
+        };
+
         var processDownloadTask = function (task, addVirtualFileNode) {
             if (!task) {
                 ariaNgLogService.warn('[aria2TaskService.processDownloadTask] task is null');
@@ -376,6 +426,8 @@
                     task.singleUrl = firstUri;
                 }
             }
+
+            task.searchAttribute = getTaskSearchAttribute(task);
 
             ariaNgLogService.debug('[aria2TaskService.processDownloadTask] process success', task);
 

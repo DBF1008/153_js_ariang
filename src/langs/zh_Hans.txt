@@ -37,6 +37,7 @@ Copy Download Url=复制下载链接
 Copy Magnet Link=复制磁力链接
 Help=帮助
 Search=搜索
+Search task name, GID, URL or other information=搜索任务名、GID、链接或其他信息
 Default=默认
 Expand=展开
 Collapse=折叠

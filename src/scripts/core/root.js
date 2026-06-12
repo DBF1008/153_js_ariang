@@ -157,6 +157,10 @@
                 for (var i = 0; i < this.list.length; i++) {
                     var task = this.list[i];
 
+                    if (!$rootScope.filterTask(task)) {
+                        continue;
+                    }
+
                     if (this.selected[task.gid]) {
                         result.push(task.gid);
                     }
@@ -173,6 +177,10 @@
 
                 for (var i = 0; i < this.list.length; i++) {
                     var task = this.list[i];
+
+                    if (!$rootScope.filterTask(task)) {
+                        continue;
+                    }
 
                     if (this.selected[task.gid]) {
                         result.push(task);
@@ -345,7 +353,13 @@
                 return true;
             }
 
-            return (task.taskName.toLowerCase().indexOf($rootScope.searchContext.text.toLowerCase()) >= 0);
+            var keyword = $rootScope.searchContext.text.toLowerCase();
+
+            if (angular.isString(task.searchAttribute)) {
+                return (task.searchAttribute.indexOf(keyword) >= 0);
+            }
+
+            return (task.taskName.toLowerCase().indexOf(keyword) >= 0);
         };
 
         $rootScope.isTaskRetryable = function (task) {

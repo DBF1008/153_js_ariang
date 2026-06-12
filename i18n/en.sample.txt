@@ -37,6 +37,7 @@ Copy Download Url=Copy Download Url
 Copy Magnet Link=Copy Magnet Link
 Help=Help
 Search=Search
+Search task name, GID, URL or other information=Search task name, GID, URL or other information
 Default=Default
 Expand=Expand
 Collapse=Collapse
